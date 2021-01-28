@@ -1,11 +1,8 @@
 #![allow(dead_code, unused)]
 
 use std::env;
-use std::mem;
 use std::io;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
+use std::fs::read;
 
 enum Register {
     R0,    // register 0
@@ -47,14 +44,29 @@ enum ConditionCode {
 }
 
 fn load_file(path: &str) -> io::Result<()> {
-    let file = File::open(&path)?;
-    let mut reader = BufReader::new(file);
+    let buffer = read(path).unwrap();
+    let origin = u16::from_be_bytes([buffer[0], buffer[1]]);
+    let mut pointer = origin;
 
-    let mut buf = [0u8; mem::size_of::<u16>()];
-    reader.read_exact(&mut buf)?;
+    let bytes = {
+        let skip = 2;
+        let step = 2;
+        let iterator = buffer
+            .iter()
+            .skip(skip + 1)
+            .step_by(step);
+        buffer
+            .iter()
+            .skip(skip)
+            .step_by(step)
+            .zip(iterator)
+            .map(|(&b1, &b2)| u16::from_be_bytes([b1, b2]))
+    };
 
-    println!("The bytes: {:?}", buf);
-    println!("{:#06x}", u16::from_be_bytes(buf));
+    for byte in bytes {
+        println!("{:#06x}", byte);
+    }
+
     Ok(())
 }
 
