@@ -2,20 +2,32 @@
 
 use std::env;
 use std::io;
-use std::fs::read;
+use std::fs;
 
-enum Register {
-    R0,    // register 0
-    R1,    // register 1
-    R2,    // register 2
-    R3,    // register 3
-    R4,    // register 4
-    R5,    // register 5
-    R6,    // register 6
-    R7,    // register 7
-    PC,    // program counter
-    CC,    // condition code
-    COUNT, // number of registers
+#[derive(Default)]
+struct Registers {
+    r0: u16, // register 0
+    r1: u16, // register 1
+    r2: u16, // register 2
+    r3: u16, // register 3
+    r4: u16, // register 4
+    r5: u16, // register 5
+    r6: u16, // register 6
+    r7: u16, // register 7
+    pc: u16, // program counter
+    cc: ConditionCode,
+}
+
+enum ConditionCode {
+    P,
+    Z,
+    N
+}
+
+impl Default for ConditionCode {
+    fn default() -> ConditionCode {
+        ConditionCode::Z
+    }
 }
 
 enum Opcode {
@@ -37,14 +49,10 @@ enum Opcode {
     TRAP // execute trap
 }
 
-enum ConditionCode {
-    P = 1,
-    Z = 1 << 1,
-    N = 1 << 2
-}
+const PC_START: u16 = 0x3000;
 
-fn load_file(path: &str, memory: &mut [u16]) -> io::Result<()> {
-    let buffer = read(path).unwrap();
+fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
+    let buffer = fs::read(path).unwrap();
     let origin = u16::from_be_bytes([buffer[0], buffer[1]]);
     let mut pointer = origin as usize;
 
@@ -68,14 +76,20 @@ fn load_file(path: &str, memory: &mut [u16]) -> io::Result<()> {
         pointer += 1;
     }
 
-    println!("{:#06x}", memory[0x3000]);
+    Ok(origin)
+}
 
-    Ok(())
+fn mread(memory: &mut [u16], addr: u16) -> u16 {
+    memory[addr as usize]
+}
+
+fn mwrite(memory: &mut [u16], addr: u16, val: u16) {
+    memory[addr as usize] = val;
 }
 
 fn main() {
     let mut memory = [0u16; u16::MAX as usize];
-    let mut registers = [0u16; Register::COUNT as usize];
+    let mut reg = Registers::default();
 
     let args: Vec<String> = env::args().collect();
 
@@ -83,14 +97,18 @@ fn main() {
         panic!("lc3 [file] ...");
     }
 
-    load_file(&args[1], &mut memory);
+    reg.pc = match load_file(&mut memory, &args[1]) {
+        Ok(origin) => origin,
+        Err(_) => PC_START
+    };
 
     let mut instr: u16;
     let mut op: u16;
     let mut running = true;
     while running {
-        // read instr
-        // read opcode
+        instr = mread(&mut memory, reg.pc);
+        op = instr >> 12;
+        reg.pc += 1;
         running = false;
     }
 }
