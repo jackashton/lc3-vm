@@ -1,5 +1,3 @@
-#![allow(dead_code, unused)]
-
 use std::env;
 use std::io;
 use std::fs;
@@ -30,23 +28,48 @@ impl Default for ConditionCode {
     }
 }
 
-enum Opcode {
+enum OpCode {
     BR,  // branch
     ADD, // add
-    AND, // bitwise and
-    NOT, // bitwise not
     LD,  // load
     ST,  // store
-    LDI, // load indirect
-    STI, // store indirect
-    JMP, // jump
     JSR, // jump register
+    AND, // bitwise and
     LDR, // load register
     STR, // store register
     RTI, // unused
+    NOT, // bitwise not
+    LDI, // load indirect
+    STI, // store indirect
+    JMP, // jump
     RES, // reserved
     LEA, // load effective address
-    TRAP // execute trap
+    TRAP, // execute trap
+    ERR,  // error (for vm only)
+}
+
+impl From<u16> for OpCode {
+    fn from(n: u16) -> OpCode {
+        match n {
+            n if n == OpCode::BR as u16 => OpCode::BR,
+            n if n == OpCode::ADD as u16 => OpCode::ADD,
+            n if n == OpCode::LD as u16 => OpCode::LD,
+            n if n == OpCode::ST as u16 => OpCode::ST,
+            n if n == OpCode::JSR as u16 => OpCode::JSR,
+            n if n == OpCode::AND as u16 => OpCode::AND,
+            n if n == OpCode::LDR as u16 => OpCode::LDR,
+            n if n == OpCode::STR as u16 => OpCode::STR,
+            n if n == OpCode::RTI as u16 => OpCode::RTI,
+            n if n == OpCode::NOT as u16 => OpCode::NOT,
+            n if n == OpCode::LDI as u16 => OpCode::LDI,
+            n if n == OpCode::STI as u16 => OpCode::STI,
+            n if n == OpCode::JMP as u16 => OpCode::JMP,
+            n if n == OpCode::RES as u16 => OpCode::RES,
+            n if n == OpCode::LEA as u16 => OpCode::LEA,
+            n if n == OpCode::TRAP as u16 => OpCode::TRAP,
+            _ => OpCode::ERR,
+        }
+    }
 }
 
 const PC_START: u16 = 0x3000;
@@ -88,14 +111,14 @@ fn mwrite(memory: &mut [u16], addr: u16, val: u16) {
 }
 
 fn main() {
-    let mut memory = [0u16; u16::MAX as usize];
-    let mut reg = Registers::default();
-
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         panic!("lc3 [file] ...");
     }
+
+    let mut memory = [0u16; u16::MAX as usize];
+    let mut reg = Registers::default();
 
     reg.pc = match load_file(&mut memory, &args[1]) {
         Ok(origin) => origin,
@@ -105,9 +128,31 @@ fn main() {
     let mut instr: u16;
     let mut op: u16;
     let mut running = true;
+
     while running {
         instr = mread(&mut memory, reg.pc);
         op = instr >> 12;
+
+        match OpCode::from(op) {
+            OpCode::BR => {},
+            OpCode::ADD => {},
+            OpCode::LD => {},
+            OpCode::ST => {},
+            OpCode::JSR => {},
+            OpCode::AND => {},
+            OpCode::LDR => {},
+            OpCode::STR => {},
+            OpCode::RTI => {},
+            OpCode::NOT => {},
+            OpCode::LDI => {},
+            OpCode::STI => {},
+            OpCode::JMP => {},
+            OpCode::RES => {},
+            OpCode::LEA => {},
+            OpCode::TRAP => {},
+            _ => {}
+        }
+
         reg.pc += 1;
         running = false;
     }
