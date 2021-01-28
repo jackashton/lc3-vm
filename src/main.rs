@@ -1,31 +1,41 @@
 use std::env;
 use std::io;
 use std::fs;
+use std::ops::{Index, IndexMut};
 
-#[derive(Default)]
-struct Registers {
-    r0: u16, // register 0
-    r1: u16, // register 1
-    r2: u16, // register 2
-    r3: u16, // register 3
-    r4: u16, // register 4
-    r5: u16, // register 5
-    r6: u16, // register 6
-    r7: u16, // register 7
-    pc: u16, // program counter
-    cc: ConditionCode,
+enum Register {
+    R0,    // register 0
+    R1,    // register 1
+    R2,    // register 2
+    R3,    // register 3
+    R4,    // register 4
+    R5,    // register 5
+    R6,    // register 6
+    R7,    // register 7
+    PC,    // program counter
+    CC,    // condition code
+    COUNT, // number of registers
+}
+
+struct Registers([u16; Register::COUNT as usize]);
+
+impl Index<Register> for Registers {
+    type Output = u16;
+    fn index(&self, i: Register) -> &Self::Output {
+        &self.0[i as usize]
+    }
+}
+
+impl IndexMut<Register> for Registers {
+    fn index_mut(&mut self, i: Register) -> &mut Self::Output {
+        &mut self.0[i as usize]
+    }
 }
 
 enum ConditionCode {
-    P,
-    Z,
-    N
-}
-
-impl Default for ConditionCode {
-    fn default() -> ConditionCode {
-        ConditionCode::Z
-    }
+    P = 1,
+    Z = 1 << 1,
+    N = 1 << 2
 }
 
 const PC_START: u16 = 0x3000;
@@ -73,9 +83,9 @@ fn main() {
     }
 
     let mut memory = [0u16; u16::MAX as usize];
-    let mut reg = Registers::default();
+    let mut reg = Registers([0u16; Register::COUNT as usize]);
 
-    reg.pc = match load_file(&mut memory, &args[1]) {
+    reg[Register::PC] = match load_file(&mut memory, &args[1]) {
         Ok(origin) => origin,
         Err(_) => PC_START
     };
@@ -85,7 +95,7 @@ fn main() {
     let mut running = true;
 
     while running {
-        instr = mread(&mut memory, reg.pc);
+        instr = mread(&mut memory, reg[Register::PC]);
         op = instr >> 12;
 
         match op {
@@ -93,7 +103,7 @@ fn main() {
 
             },
             0b0001 => { // ADD, add
-
+                let imm = (instr >> 5) & 1;
             },
             0b0010 => { // LD, load
 
@@ -149,17 +159,18 @@ fn main() {
 
                     },
                     0x24 => { // PUTSP, same as PUTS but two characters per memory address
-                        
+
                     },
                     0x25 => { // HALT, halt program
 
-                    }
+                    },
+                    _ => {}
                 }
             },
             _ => {}
         }
 
-        reg.pc += 1;
+        reg[Register::PC] += 1;
         running = false; // remove this!
     }
 }
