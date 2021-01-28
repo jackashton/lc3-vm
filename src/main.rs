@@ -46,21 +46,13 @@ fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
             .map(|(&b1, &b2)| u16::from_be_bytes([b1, b2]))
     };
 
-
-    let origin = match words.next() {
-        Some(origin) => origin,
-        None => PC_START
-    };
-    
+    let origin = words.next().unwrap();
     let mut pointer = origin as usize;
-
 
     for word in words {
         memory[pointer] = word;
         pointer += 1;
     }
-
-    println!("{:#06x}", memory[(origin) as usize]);
 
     Ok(origin)
 }
@@ -143,7 +135,26 @@ fn main() {
 
             },
             0b1111 => { // TRAP, execute trap
+                match instr & 0xFF {
+                    0x20 => { // GETC, get character from keyboard. Not echoed in terminal
 
+                    },
+                    0x21 => { // OUT, output character to terminal
+
+                    },
+                    0x22 => { // PUTS, output null terminating string to terminal
+
+                    },
+                    0x23 => { // IN, get character from keyboard. Echoed in terminal
+
+                    },
+                    0x24 => { // PUTSP, same as PUTS but two characters per memory address
+                        
+                    },
+                    0x25 => { // HALT, halt program
+
+                    }
+                }
             },
             _ => {}
         }
