@@ -26,8 +26,21 @@ impl Index<Register> for Registers {
     }
 }
 
+impl Index<u16> for Registers {
+    type Output = u16;
+    fn index(&self, i: u16) -> &Self::Output {
+        &self.0[i as usize]
+    }
+}
+
 impl IndexMut<Register> for Registers {
     fn index_mut(&mut self, i: Register) -> &mut Self::Output {
+        &mut self.0[i as usize]
+    }
+}
+
+impl IndexMut<u16> for Registers {
+    fn index_mut(&mut self, i: u16) -> &mut Self::Output {
         &mut self.0[i as usize]
     }
 }
@@ -103,7 +116,16 @@ fn main() {
 
             },
             0b0001 => { // ADD, add
+                let dr = (instr >> 9) & 0x7;
+                let sr1 = (instr >> 6) & 0x7;
                 let imm = (instr >> 5) & 1;
+                if imm == 1 {
+                    let imm5 = instr & 0x001F;
+                    reg[dr] = reg[sr1] + imm5;
+                } else {
+                    let sr2 = instr & 0x7;
+                    reg[dr] = reg[sr1] + reg[sr2]; 
+                }
             },
             0b0010 => { // LD, load
 
