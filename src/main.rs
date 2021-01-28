@@ -32,28 +32,35 @@ const PC_START: u16 = 0x3000;
 
 fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
     let buffer = fs::read(path).unwrap();
-    let origin = u16::from_be_bytes([buffer[0], buffer[1]]);
-    let mut pointer = origin as usize;
 
-    let bytes = {
-        let skip = 2;
+    let mut words = {
         let step = 2;
         let iterator = buffer
             .iter()
-            .skip(skip + 1)
+            .skip(1)
             .step_by(step);
         buffer
             .iter()
-            .skip(skip)
             .step_by(step)
             .zip(iterator)
             .map(|(&b1, &b2)| u16::from_be_bytes([b1, b2]))
     };
 
-    for byte in bytes {
-        memory[pointer] = byte;
+
+    let origin = match words.next() {
+        Some(origin) => origin,
+        None => PC_START
+    };
+    
+    let mut pointer = origin as usize;
+
+
+    for word in words {
+        memory[pointer] = word;
         pointer += 1;
     }
+
+    println!("{:#06x}", memory[(origin) as usize]);
 
     Ok(origin)
 }
@@ -142,6 +149,6 @@ fn main() {
         }
 
         reg.pc += 1;
-        running = false;
+        running = false; // remove this!
     }
 }
