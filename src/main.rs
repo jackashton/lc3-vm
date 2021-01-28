@@ -28,50 +28,6 @@ impl Default for ConditionCode {
     }
 }
 
-enum OpCode {
-    BR,  // branch
-    ADD, // add
-    LD,  // load
-    ST,  // store
-    JSR, // jump register
-    AND, // bitwise and
-    LDR, // load register
-    STR, // store register
-    RTI, // unused
-    NOT, // bitwise not
-    LDI, // load indirect
-    STI, // store indirect
-    JMP, // jump
-    RES, // reserved
-    LEA, // load effective address
-    TRAP, // execute trap
-    ERR,  // error (for vm only)
-}
-
-impl From<u16> for OpCode {
-    fn from(n: u16) -> OpCode {
-        match n {
-            n if n == OpCode::BR as u16 => OpCode::BR,
-            n if n == OpCode::ADD as u16 => OpCode::ADD,
-            n if n == OpCode::LD as u16 => OpCode::LD,
-            n if n == OpCode::ST as u16 => OpCode::ST,
-            n if n == OpCode::JSR as u16 => OpCode::JSR,
-            n if n == OpCode::AND as u16 => OpCode::AND,
-            n if n == OpCode::LDR as u16 => OpCode::LDR,
-            n if n == OpCode::STR as u16 => OpCode::STR,
-            n if n == OpCode::RTI as u16 => OpCode::RTI,
-            n if n == OpCode::NOT as u16 => OpCode::NOT,
-            n if n == OpCode::LDI as u16 => OpCode::LDI,
-            n if n == OpCode::STI as u16 => OpCode::STI,
-            n if n == OpCode::JMP as u16 => OpCode::JMP,
-            n if n == OpCode::RES as u16 => OpCode::RES,
-            n if n == OpCode::LEA as u16 => OpCode::LEA,
-            n if n == OpCode::TRAP as u16 => OpCode::TRAP,
-            _ => OpCode::ERR,
-        }
-    }
-}
-
 const PC_START: u16 = 0x3000;
 
 fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
@@ -133,23 +89,55 @@ fn main() {
         instr = mread(&mut memory, reg.pc);
         op = instr >> 12;
 
-        match OpCode::from(op) {
-            OpCode::BR => {},
-            OpCode::ADD => {},
-            OpCode::LD => {},
-            OpCode::ST => {},
-            OpCode::JSR => {},
-            OpCode::AND => {},
-            OpCode::LDR => {},
-            OpCode::STR => {},
-            OpCode::RTI => {},
-            OpCode::NOT => {},
-            OpCode::LDI => {},
-            OpCode::STI => {},
-            OpCode::JMP => {},
-            OpCode::RES => {},
-            OpCode::LEA => {},
-            OpCode::TRAP => {},
+        match op {
+            0b0000 => { // BR, branch
+
+            },
+            0b0001 => { // ADD, add
+
+            },
+            0b0010 => { // LD, load
+
+            },
+            0b0011 => { // ST, store
+
+            },
+            0b0100 => { // JSR, jump register
+
+            },
+            0b0101 => { // AND, bitwise and
+
+            },
+            0b0110 => { // LDR, load register
+
+            },
+            0b0111 => { // STR, store register
+
+            },
+            0b1000 => { // RTI, unused
+
+            },
+            0b1001 => { // NOT, bitwise not
+
+            },
+            0b1010 => { // LDI, load indirect
+
+            },
+            0b1011 => { // STI, store indirect
+
+            },
+            0b1100 => { // JMP, jump
+
+            },
+            0b1101 => { // RES, reserved
+
+            },
+            0b1110 => { // LEA, load effective address
+
+            },
+            0b1111 => { // TRAP, execute trap
+
+            },
             _ => {}
         }
 
