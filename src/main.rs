@@ -43,10 +43,10 @@ enum ConditionCode {
     N = 1 << 2
 }
 
-fn load_file(path: &str) -> io::Result<()> {
+fn load_file(path: &str, memory: &mut [u16]) -> io::Result<()> {
     let buffer = read(path).unwrap();
     let origin = u16::from_be_bytes([buffer[0], buffer[1]]);
-    let mut pointer = origin;
+    let mut pointer = origin as usize;
 
     let bytes = {
         let skip = 2;
@@ -64,8 +64,11 @@ fn load_file(path: &str) -> io::Result<()> {
     };
 
     for byte in bytes {
-        println!("{:#06x}", byte);
+        memory[pointer] = byte;
+        pointer += 1;
     }
+
+    println!("{:#06x}", memory[0x3000]);
 
     Ok(())
 }
@@ -80,7 +83,7 @@ fn main() {
         panic!("lc3 [file] ...");
     }
 
-    load_file(&args[1]);
+    load_file(&args[1], &mut memory);
 
     let mut instr: u16;
     let mut op: u16;
