@@ -46,9 +46,9 @@ impl IndexMut<u16> for Registers {
 }
 
 enum ConditionCode {
-    P = 1,
-    Z = 1 << 1,
-    N = 1 << 2
+    N = 1 << 2, // Ob100
+    Z = 1 << 1, // 0b010
+    P = 1       // 0b001
 }
 
 const PC_START: u16 = 0x3000;
@@ -88,6 +88,18 @@ fn mwrite(memory: &mut [u16], addr: u16, val: u16) {
     memory[addr as usize] = val;
 }
 
+fn setcc(reg: &mut Registers, r: u16) {
+    reg[Register::CC] = {
+        if (reg[r] >> 15) == 1 {
+            ConditionCode::N
+        } else if reg[r] == 0 {
+            ConditionCode::Z
+        } else {
+            ConditionCode::P
+        }
+    } as u16;
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -113,7 +125,11 @@ fn main() {
 
         match op {
             0b0000 => { // BR, branch
-
+                let pc_offset = instr & 0x01FF;
+                let cc = (instr >> 9) & 0x7;
+                if (cc & reg[Register::CC]) > 0 {
+                    reg[Register::PC] += pc_offset;
+                }
             },
             0b0001 => { // ADD, add
                 let dr = (instr >> 9) & 0x7;
@@ -124,8 +140,9 @@ fn main() {
                     reg[dr] = reg[sr1] + imm5;
                 } else {
                     let sr2 = instr & 0x7;
-                    reg[dr] = reg[sr1] + reg[sr2]; 
+                    reg[dr] = reg[sr1] + reg[sr2];
                 }
+                setcc(&mut reg, dr);
             },
             0b0010 => { // LD, load
 
