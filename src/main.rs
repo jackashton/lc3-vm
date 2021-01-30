@@ -100,6 +100,14 @@ fn setcc(reg: &mut Registers, r: u16) {
     } as u16;
 }
 
+fn sext(x: u16, w: u16) -> u16 {
+    if ((x >> (w - 1)) & 1) == 1 {
+        x | (0xFFFF << w)
+    } else {
+        x
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -128,7 +136,7 @@ fn main() {
                 let pc_offset = instr & 0x01FF;
                 let cc = (instr >> 9) & 0x7;
                 if (cc & reg[Register::CC]) > 0 {
-                    reg[Register::PC] += pc_offset;
+                    reg[Register::PC] += sext(pc_offset, 9);
                 }
             },
             0b0001 => { // ADD, add
@@ -137,7 +145,7 @@ fn main() {
                 let imm = (instr >> 5) & 1;
                 if imm == 1 {
                     let imm5 = instr & 0x001F;
-                    reg[dr] = reg[sr1] + imm5;
+                    reg[dr] = reg[sr1] + sext(imm5, 5);
                 } else {
                     let sr2 = instr & 0x7;
                     reg[dr] = reg[sr1] + reg[sr2];
@@ -145,7 +153,10 @@ fn main() {
                 setcc(&mut reg, dr);
             },
             0b0010 => { // LD, load
-
+                let dr = (instr >> 9) & 0x7;
+                let pc_offset = instr & 0x01FF;
+                reg[dr] = mread(&mut memory, reg[Register::PC] + sext(pc_offset, 9));
+                setcc(&mut reg, dr);
             },
             0b0011 => { // ST, store
 
@@ -157,7 +168,11 @@ fn main() {
 
             },
             0b0110 => { // LDR, load register
-
+                let dr = (instr >> 9) & 0x7;
+                let base_r = (instr >> 6) & 0x7;
+                let offset = instr & 0x3F;
+                reg[dr] = mread(&mut memory, base_r + sext(offset, 6));
+                setcc(&mut reg, dr);
             },
             0b0111 => { // STR, store register
 
@@ -169,7 +184,11 @@ fn main() {
 
             },
             0b1010 => { // LDI, load indirect
-
+                let dr = (instr >> 9) & 0x7;
+                let pc_offset = instr & 0x01FF;
+                let addr = mread(&mut memory, reg[Register::PC] + sext(pc_offset, 9));
+                reg[dr] = mread(&mut memory, addr);
+                setcc(&mut reg, dr);
             },
             0b1011 => { // STI, store indirect
 
