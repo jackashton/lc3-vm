@@ -129,6 +129,7 @@ fn main() {
 
     while running {
         instr = mread(&mut memory, reg[Register::PC]);
+        reg[Register::PC] += 1;
         op = instr >> 12;
 
         match op {
@@ -159,13 +160,32 @@ fn main() {
                 setcc(&mut reg, dr);
             },
             0b0011 => { // ST, store
-
+                let sr = (instr >> 9) & 0x7;
+                let pc_offset = instr & 0x1FF;
+                mwrite(&mut memory, reg[Register::PC] + sext(pc_offset, 9), reg[sr]);
             },
             0b0100 => { // JSR, jump register
-
+                let flag = (instr >> 11) & 1;
+                if flag == 0 {
+                    let base_r = (instr >> 6) & 0x7;
+                    reg[Register::PC] = reg[base_r];
+                } else {
+                    let pc_offset = instr & 0x7FF;
+                    reg[Register::PC] += sext(pc_offset, 11);
+                }
             },
             0b0101 => { // AND, bitwise and
-
+                let dr = (instr >> 9) & 0x7;
+                let sr1 = (instr >> 6) & 0x7;
+                let imm = (instr >> 5) & 1;
+                if imm == 1 {
+                    let imm5 = instr & 0x001F;
+                    reg[dr] = reg[sr1] & sext(imm5, 5);
+                } else {
+                    let sr2 = instr & 0x7;
+                    reg[dr] = reg[sr1] & reg[sr2];
+                }
+                setcc(&mut reg, dr);
             },
             0b0110 => { // LDR, load register
                 let dr = (instr >> 9) & 0x7;
@@ -175,13 +195,19 @@ fn main() {
                 setcc(&mut reg, dr);
             },
             0b0111 => { // STR, store register
-
+                let sr = (instr >> 9) & 0x7;
+                let base_r = (instr >> 6) & 0x7;
+                let pc_offset = instr & 0x3F;
+                mwrite(&mut memory, reg[base_r] + sext(pc_offset, 6), reg[sr]);
             },
             0b1000 => { // RTI, unused
 
             },
             0b1001 => { // NOT, bitwise not
-
+                let dr = (instr >> 9) & 0x7;
+                let sr = (instr >> 6) & 0x7;
+                reg[dr] = !reg[sr];
+                setcc(&mut reg, dr);
             },
             0b1010 => { // LDI, load indirect
                 let dr = (instr >> 9) & 0x7;
@@ -191,16 +217,23 @@ fn main() {
                 setcc(&mut reg, dr);
             },
             0b1011 => { // STI, store indirect
-
+                let sr = (instr >> 9) & 0x7;
+                let pc_offset = instr & 0x1FF;
+                let addr = mread(&mut memory, reg[Register::PC] + sext(pc_offset, 9));
+                mwrite(&mut memory, addr, reg[sr]);
             },
             0b1100 => { // JMP, jump
-
+                let base_r = (instr >> 6) & 0x7;
+                reg[Register::PC] = reg[base_r];
             },
             0b1101 => { // RES, reserved
 
             },
             0b1110 => { // LEA, load effective address
-
+                let dr = (instr >> 9) & 0x7;
+                let pc_offset = 0x1FF;
+                reg[dr] = reg[Register::PC] + sext(pc_offset, 9);
+                setcc(&mut reg, dr);
             },
             0b1111 => { // TRAP, execute trap
                 match instr & 0xFF {
@@ -228,7 +261,6 @@ fn main() {
             _ => {}
         }
 
-        reg[Register::PC] += 1;
         running = false; // remove this!
     }
 }
