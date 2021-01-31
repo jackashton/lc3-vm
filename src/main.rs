@@ -1,18 +1,18 @@
 use std::env;
 use std::io;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::fs;
 use std::ops::{Index, IndexMut};
 
 enum Register {
     R0,    // register 0
-    R1,    // register 1
-    R2,    // register 2
-    R3,    // register 3
-    R4,    // register 4
-    R5,    // register 5
-    R6,    // register 6
-    R7,    // register 7
+    _R1,   // register 1
+    _R2,   // register 2
+    _R3,   // register 3
+    _R4,   // register 4
+    _R5,   // register 5
+    _R6,   // register 6
+    _R7,   // register 7
     PC,    // program counter
     CC,    // condition code
     COUNT, // number of registers
@@ -109,6 +109,10 @@ fn sext(x: u16, w: u16) -> u16 {
     }
 }
 
+fn abort() {
+    std::process::exit(1);
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -123,6 +127,8 @@ fn main() {
         Ok(origin) => origin,
         Err(_) => PC_START
     };
+
+    reg[Register::PC] = PC_START; // REMOVE THIS MAYBE?
 
     let mut instr: u16;
     let mut op: u16;
@@ -202,7 +208,7 @@ fn main() {
                 mwrite(&mut memory, reg[base_r] + sext(pc_offset, 6), reg[sr]);
             },
             0b1000 => { // RTI, unused
-
+                abort();
             },
             0b1001 => { // NOT, bitwise not
                 let dr = (instr >> 9) & 0x7;
@@ -228,7 +234,7 @@ fn main() {
                 reg[Register::PC] = reg[base_r];
             },
             0b1101 => { // RES, reserved
-
+                abort();
             },
             0b1110 => { // LEA, load effective address
                 let dr = (instr >> 9) & 0x7;
@@ -239,26 +245,26 @@ fn main() {
             0b1111 => { // TRAP, execute trap
                 match instr & 0xFF {
                     0x20 => { // GETC, get character from keyboard. Not echoed in terminal
-                        reg[Register::R0] = io::stdin()
+                        let c = io::stdin()
                             .bytes()
                             .next()
                             .unwrap()
-                            .expect("failed to read character")
-                            .into();
+                            .expect("failed to read character");
+                        reg[Register::R0]  = c as u16;
                     },
                     0x21 => { // OUT, output character to terminal
-                        print!("{}", (reg[Register::R0] as u8) as char);
-                        io::stdout().flush().unwrap();
+                        let c = reg[Register::R0] as u8;
+                        print!("{}", c as char);
                     },
                     0x22 => { // PUTS, output null terminating string to terminal
-                        let mut addr = reg[Register::R0];
-                        let mut c = mread(&mut memory, addr);
-                        while c != 0 {
-                            print!("{}", (c as u8) as char);
-                            addr += 1;
-                            c = mread(&mut memory, addr);
+                        for c in &memory[reg[Register::R0] as usize..] {
+                            let c8 = (c & 0xFF) as u8;
+                            if c8 != 0 {
+                                print!("{}", c8 as char);
+                            } else {
+                                break;
+                            }
                         }
-                        io::stdout().flush().unwrap();
                     },
                     0x23 => { // IN, get character from keyboard. Echoed in terminal
                         print!("Enter a character: ");
@@ -272,16 +278,16 @@ fn main() {
                         reg[Register::R0] = input as u16;
                     },
                     0x24 => { // PUTSP, same as PUTS but two characters per memory address
-                        let mut addr = reg[Register::R0];
-                        let mut c = mread(&mut memory, addr);
-                        while c != 0 {
-                            let char1 = ((c & 0xFF) as u8) as char;
-                            let char2 = ((c >> 8) as u8) as char;
-                            print!("{}{}", char1, char2);
-                            addr += 1;
-                            c = mread(&mut memory, addr);
+                        for c in &memory[reg[Register::R0] as usize..] {
+                            let b1 = (*c >> 8) as u8;
+                            let b2 = (*c & 0xFF) as u8;
+                            if b1 != 0 {
+                                print!("{}", b1 as char);
+                                if b2 != 0 {
+                                    print!("{}", b2 as char);
+                                }
+                            }
                         }
-                        io::stdout().flush().unwrap();
                     },
                     0x25 => { // HALT, halt program
                         running = false;
