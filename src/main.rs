@@ -238,7 +238,7 @@ fn main() {
             },
             0b1110 => { // LEA, load effective address
                 let dr = (instr >> 9) & 0x7;
-                let pc_offset = 0x1FF;
+                let pc_offset = instr & 0x1FF;
                 reg[dr] = reg[Register::PC] + sext(pc_offset, 9);
                 setcc(&mut reg, dr);
             },
