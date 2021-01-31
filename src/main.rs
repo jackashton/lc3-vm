@@ -1,5 +1,6 @@
 use std::env;
 use std::io;
+use std::io::{Read, Write};
 use std::fs;
 use std::ops::{Index, IndexMut};
 
@@ -238,29 +239,57 @@ fn main() {
             0b1111 => { // TRAP, execute trap
                 match instr & 0xFF {
                     0x20 => { // GETC, get character from keyboard. Not echoed in terminal
-
+                        reg[Register::R0] = io::stdin()
+                            .bytes()
+                            .next()
+                            .unwrap()
+                            .expect("failed to read character")
+                            .into();
                     },
                     0x21 => { // OUT, output character to terminal
-
+                        print!("{}", (reg[Register::R0] as u8) as char);
+                        io::stdout().flush().unwrap();
                     },
                     0x22 => { // PUTS, output null terminating string to terminal
-
+                        let mut addr = reg[Register::R0];
+                        let mut c = mread(&mut memory, addr);
+                        while c != 0 {
+                            print!("{}", (c as u8) as char);
+                            addr += 1;
+                            c = mread(&mut memory, addr);
+                        }
+                        io::stdout().flush().unwrap();
                     },
                     0x23 => { // IN, get character from keyboard. Echoed in terminal
+                        print!("Enter a character: ");
+                        let input = io::stdin()
+                            .bytes()
+                            .next()
+                            .unwrap()
+                            .expect("failed to read character");
 
+                        print!("{}", input);
+                        reg[Register::R0] = input as u16;
                     },
                     0x24 => { // PUTSP, same as PUTS but two characters per memory address
-
+                        let mut addr = reg[Register::R0];
+                        let mut c = mread(&mut memory, addr);
+                        while c != 0 {
+                            let char1 = ((c & 0xFF) as u8) as char;
+                            let char2 = ((c >> 8) as u8) as char;
+                            print!("{}{}", char1, char2);
+                            addr += 1;
+                            c = mread(&mut memory, addr);
+                        }
+                        io::stdout().flush().unwrap();
                     },
                     0x25 => { // HALT, halt program
-
+                        running = false;
                     },
                     _ => {}
                 }
             },
             _ => {}
         }
-
-        running = false; // remove this!
     }
 }
