@@ -1,6 +1,6 @@
 use std::env;
 use std::io;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::fs;
 use std::ops::{Index, IndexMut};
 
@@ -52,6 +52,7 @@ enum ConditionCode {
     P = 1       // 0b001
 }
 
+// Default PC start
 const PC_START: u16 = 0x3000;
 
 fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
@@ -102,15 +103,17 @@ fn setcc(reg: &mut Registers, r: u16) {
 }
 
 fn sext(x: u16, w: u16) -> u16 {
-    if ((x >> (w - 1)) & 1) == 1 {
-        x | (0xFFFF << w)
-    } else {
-        x
-    }
+    if ((x >> (w - 1)) & 1) == 1 { x | (0xFFFF << w) } else { x }
 }
 
 fn abort() {
     std::process::exit(1);
+}
+
+fn getchar() -> u8 {
+    let mut buffer = [0];
+    std::io::stdin().read_exact(&mut buffer).unwrap();
+    buffer[0]
 }
 
 fn main() {
@@ -138,10 +141,11 @@ fn main() {
         instr = mread(&mut memory, reg[Register::PC]);
         reg[Register::PC] += 1;
         op = instr >> 12;
+        // println!("{:#018b}", instr);
 
         match op {
             0b0000 => { // BR, branch
-                let pc_offset = instr & 0x01FF;
+                let pc_offset = instr & 0x1FF;
                 let cc = (instr >> 9) & 0x7;
                 if (cc & reg[Register::CC]) > 0 {
                     reg[Register::PC] += sext(pc_offset, 9);
@@ -152,7 +156,7 @@ fn main() {
                 let sr1 = (instr >> 6) & 0x7;
                 let imm = (instr >> 5) & 1;
                 if imm == 1 {
-                    let imm5 = instr & 0x001F;
+                    let imm5 = instr & 0x1F;
                     reg[dr] = reg[sr1] + sext(imm5, 5);
                 } else {
                     let sr2 = instr & 0x7;
@@ -162,7 +166,7 @@ fn main() {
             },
             0b0010 => { // LD, load
                 let dr = (instr >> 9) & 0x7;
-                let pc_offset = instr & 0x01FF;
+                let pc_offset = instr & 0x1FF;
                 reg[dr] = mread(&mut memory, reg[Register::PC] + sext(pc_offset, 9));
                 setcc(&mut reg, dr);
             },
@@ -186,7 +190,7 @@ fn main() {
                 let sr1 = (instr >> 6) & 0x7;
                 let imm = (instr >> 5) & 1;
                 if imm == 1 {
-                    let imm5 = instr & 0x001F;
+                    let imm5 = instr & 0x1F;
                     reg[dr] = reg[sr1] & sext(imm5, 5);
                 } else {
                     let sr2 = instr & 0x7;
@@ -198,7 +202,7 @@ fn main() {
                 let dr = (instr >> 9) & 0x7;
                 let base_r = (instr >> 6) & 0x7;
                 let offset = instr & 0x3F;
-                reg[dr] = mread(&mut memory, base_r + sext(offset, 6));
+                reg[dr] = mread(&mut memory, reg[base_r] + sext(offset, 6));
                 setcc(&mut reg, dr);
             },
             0b0111 => { // STR, store register
@@ -218,7 +222,7 @@ fn main() {
             },
             0b1010 => { // LDI, load indirect
                 let dr = (instr >> 9) & 0x7;
-                let pc_offset = instr & 0x01FF;
+                let pc_offset = instr & 0x1FF;
                 let addr = mread(&mut memory, reg[Register::PC] + sext(pc_offset, 9));
                 reg[dr] = mread(&mut memory, addr);
                 setcc(&mut reg, dr);
@@ -245,16 +249,13 @@ fn main() {
             0b1111 => { // TRAP, execute trap
                 match instr & 0xFF {
                     0x20 => { // GETC, get character from keyboard. Not echoed in terminal
-                        let c = io::stdin()
-                            .bytes()
-                            .next()
-                            .unwrap()
-                            .expect("failed to read character");
+                        let c = getchar();
                         reg[Register::R0]  = c as u16;
                     },
                     0x21 => { // OUT, output character to terminal
                         let c = reg[Register::R0] as u8;
                         print!("{}", c as char);
+                        io::stdout().flush().unwrap();
                     },
                     0x22 => { // PUTS, output null terminating string to terminal
                         for c in &memory[reg[Register::R0] as usize..] {
@@ -265,17 +266,12 @@ fn main() {
                                 break;
                             }
                         }
+                        io::stdout().flush().unwrap();
                     },
                     0x23 => { // IN, get character from keyboard. Echoed in terminal
                         print!("Enter a character: ");
-                        let input = io::stdin()
-                            .bytes()
-                            .next()
-                            .unwrap()
-                            .expect("failed to read character");
-
-                        print!("{}", input);
-                        reg[Register::R0] = input as u16;
+                        let c = getchar();
+                        reg[Register::R0] = c as u16;
                     },
                     0x24 => { // PUTSP, same as PUTS but two characters per memory address
                         for c in &memory[reg[Register::R0] as usize..] {
@@ -288,6 +284,7 @@ fn main() {
                                 }
                             }
                         }
+                        io::stdout().flush().unwrap();
                     },
                     0x25 => { // HALT, halt program
                         running = false;
