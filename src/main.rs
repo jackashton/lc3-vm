@@ -52,6 +52,10 @@ enum ConditionCode {
     P = 1       // 0b001
 }
 
+// Memory Mapped Registers
+const KBSR: u16 = 0xFE00;
+const KBDR: u16 = 0xFE02;
+
 // Default PC start
 const PC_START: u16 = 0x3000;
 
@@ -83,6 +87,15 @@ fn load_file(memory: &mut [u16], path: &str) -> io::Result<u16> {
 }
 
 fn mread(memory: &mut [u16], addr: u16) -> u16 {
+    if addr == KBSR {
+        let c = getchar();
+        if c != 0 {
+            memory[KBSR as usize] = 1 << 15;
+            memory[KBDR as usize] = c as u16;
+        } else {
+            memory[KBSR as usize] = 0;
+        }
+    }
     memory[addr as usize]
 }
 
@@ -141,7 +154,7 @@ fn main() {
         instr = mread(&mut memory, reg[Register::PC]);
         reg[Register::PC] += 1;
         op = instr >> 12;
-        // println!("{:#018b}", instr);
+        // println!("instr={:#018b} PC={}, R0={}, R1={}", instr, reg[Register::PC], reg[Register::R0], reg[Register::_R1]);
 
         match op {
             0b0000 => { // BR, branch
