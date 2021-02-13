@@ -12,7 +12,7 @@ enum Register {
     _R4,   // register 4
     _R5,   // register 5
     _R6,   // register 6
-    _R7,   // register 7
+    R7,   // register 7
     PC,    // program counter
     CC,    // condition code
     COUNT, // number of registers
@@ -154,8 +154,7 @@ fn main() {
         instr = mread(&mut memory, reg[Register::PC]);
         reg[Register::PC] += 1;
         op = instr >> 12;
-        // println!("instr={:#018b} PC={}, R0={}, R1={}", instr, reg[Register::PC], reg[Register::R0], reg[Register::_R1]);
-
+        
         match op {
             0b0000 => { // BR, branch
                 let pc_offset = instr & 0x1FF;
@@ -190,6 +189,7 @@ fn main() {
             },
             0b0100 => { // JSR, jump register
                 let flag = (instr >> 11) & 1;
+                reg[Register::R7] = reg[Register::PC];
                 if flag == 0 {
                     let base_r = (instr >> 6) & 0x7;
                     reg[Register::PC] = reg[base_r];
@@ -283,6 +283,7 @@ fn main() {
                     },
                     0x23 => { // IN, get character from keyboard. Echoed in terminal
                         print!("Enter a character: ");
+                        io::stdout().flush().unwrap();
                         let c = getchar();
                         reg[Register::R0] = c as u16;
                     },
